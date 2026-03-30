@@ -8,6 +8,8 @@ A macOS menu-bar voice input app built with [Makepad](https://github.com/makepad
 
 Press Option, speak, release — your words appear wherever the cursor is.
 
+> **Platform:** macOS (Apple Silicon) only. See [Roadmap](#roadmap) for cross-platform plans.
+
 [中文文档](README_CN.md)
 
 </div>
@@ -137,6 +139,54 @@ make bundle
 - **ASR Engine**: [Qwen3-ASR](https://github.com/OminiX-ai/OminiX-MLX) via OminiX-API — pure Rust MLX inference
 - **LLM**: Any OpenAI-compatible API (Kimi, DeepSeek, OpenAI, local models)
 - **macOS Integration**: Raw ObjC FFI via `makepad_objc_sys` — CGEvent tap, NSStatusBar, NSPasteboard, TIS input sources
+
+## Platform Support
+
+| Platform | Status | Notes |
+|----------|--------|-------|
+| macOS (Apple Silicon) | **Supported** | Full functionality |
+| macOS (Intel) | Untested | Makepad supports it, but OminiX-MLX requires Apple Silicon |
+| Windows | Planned | Requires platform-sys crate for hotkey/tray/clipboard |
+| Linux | Planned | Requires platform-sys crate + alternative ASR backend |
+| Web/WASM | Not planned | Global hotkey and clipboard injection not possible |
+
+## Roadmap
+
+### v0.2 — Polish & Stability
+- [ ] Hide capsule/settings windows on startup (proper window lifecycle)
+- [ ] Waveform animation driven by real-time audio RMS
+- [ ] Entrance/exit animations for capsule (spring + fade)
+- [ ] Menu bar icon using proper SF Symbol or SVG instead of text "MIC"
+- [ ] Clean up debug logging and clippy warnings
+- [ ] `.app` bundle with code signing
+
+### v0.3 — Cross-Platform Foundation
+- [ ] Extract `macos-sys` into `platform-sys` trait abstraction
+  - `trait HotkeyMonitor` — global hotkey detection
+  - `trait SystemTray` — tray icon and menu
+  - `trait Clipboard` — read/write clipboard
+  - `trait KeyInjector` — simulate keystrokes
+  - `trait InputSourceManager` — detect/switch input methods
+- [ ] Windows backend (`windows-sys`) — `RegisterHotKey`, `Shell_NotifyIcon`, `SendInput`
+- [ ] Linux backend (`linux-sys`) — `XGrabKey`, `libappindicator`, `xdotool`/`wtype`
+
+### v0.4 — Flexible ASR Backend
+- [ ] ASR backend abstraction (not tied to OminiX-MLX)
+- [ ] Remote API mode — use any OpenAI Whisper-compatible endpoint
+- [ ] Whisper.cpp local backend for non-Apple-Silicon platforms
+- [ ] Configurable ASR endpoint in Settings UI
+
+### v0.5 — Enhanced UX
+- [ ] Streaming transcription (show text as you speak)
+- [ ] Custom hotkey configuration UI
+- [ ] Auto-start on login
+- [ ] Update checker
+- [ ] Localized UI (English/Chinese/Japanese)
+
+### Future
+- [ ] Plugin system for custom text transformations
+- [ ] Voice commands (not just dictation)
+- [ ] Multi-model ASR (auto-select best model per language)
 
 ## License
 

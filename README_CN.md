@@ -8,6 +8,8 @@
 
 按住 Option，说话，松开 —— 文字出现在光标处。
 
+> **平台：** 目前仅支持 macOS (Apple Silicon)。跨平台计划见 [Roadmap](#roadmap)。
+
 [English](README.md)
 
 </div>
@@ -137,6 +139,54 @@ make bundle
 - **语音识别**：[Qwen3-ASR](https://github.com/OminiX-ai/OminiX-MLX) via OminiX-API — 纯 Rust MLX 推理
 - **大语言模型**：任何 OpenAI 兼容 API（Kimi、DeepSeek、OpenAI、本地模型）
 - **macOS 集成**：通过 `makepad_objc_sys` 的原生 ObjC FFI — CGEvent tap、NSStatusBar、NSPasteboard、TIS 输入法
+
+## 平台支持
+
+| 平台 | 状态 | 备注 |
+|------|------|------|
+| macOS (Apple Silicon) | **已支持** | 全部功能可用 |
+| macOS (Intel) | 未测试 | Makepad 支持，但 OminiX-MLX 需要 Apple Silicon |
+| Windows | 计划中 | 需要实现 platform-sys 热键/托盘/剪贴板 |
+| Linux | 计划中 | 需要实现 platform-sys + 替代 ASR 后端 |
+| Web/WASM | 暂无计划 | 全局热键和剪贴板注入不可行 |
+
+## Roadmap
+
+### v0.2 — 打磨与稳定
+- [ ] 启动时隐藏胶囊/设置窗口（完善窗口生命周期）
+- [ ] 基于实时音频 RMS 的波形动画
+- [ ] 胶囊入场/退场动画（弹簧 + 渐隐）
+- [ ] 菜单栏图标使用 SF Symbol 或 SVG 替代文字 "MIC"
+- [ ] 清理调试日志和 clippy 警告
+- [ ] `.app` bundle 代码签名
+
+### v0.3 — 跨平台基础
+- [ ] 将 `macos-sys` 抽象为 `platform-sys` trait
+  - `trait HotkeyMonitor` — 全局热键检测
+  - `trait SystemTray` — 托盘图标和菜单
+  - `trait Clipboard` — 剪贴板读写
+  - `trait KeyInjector` — 模拟按键
+  - `trait InputSourceManager` — 输入法检测/切换
+- [ ] Windows 后端 (`windows-sys`) — `RegisterHotKey`, `Shell_NotifyIcon`, `SendInput`
+- [ ] Linux 后端 (`linux-sys`) — `XGrabKey`, `libappindicator`, `xdotool`/`wtype`
+
+### v0.4 — 灵活的 ASR 后端
+- [ ] ASR 后端抽象（不绑定 OminiX-MLX）
+- [ ] 远程 API 模式 — 使用任何 OpenAI Whisper 兼容端点
+- [ ] Whisper.cpp 本地后端（支持非 Apple Silicon 平台）
+- [ ] 设置界面中配置 ASR 端点
+
+### v0.5 — 增强体验
+- [ ] 流式转录（边说边显示文字）
+- [ ] 自定义热键配置 UI
+- [ ] 开机自启动
+- [ ] 更新检查器
+- [ ] UI 本地化（中/英/日）
+
+### 远期
+- [ ] 插件系统（自定义文本转换）
+- [ ] 语音命令（不仅限于听写）
+- [ ] 多模型 ASR（按语言自动选择最优模型）
 
 ## 许可证
 
