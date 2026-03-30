@@ -140,7 +140,7 @@ make bundle
 
 ## License
 
-MIT
+AGPL-3.0 — See [LICENSE](LICENSE) for details.
 
 ## Credits
 

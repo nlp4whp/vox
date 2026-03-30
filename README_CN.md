@@ -140,7 +140,7 @@ make bundle
 
 ## 许可证
 
-MIT
+AGPL-3.0 — 详见 [LICENSE](LICENSE)。
 
 ## 致谢
 
