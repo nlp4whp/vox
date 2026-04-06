@@ -125,7 +125,11 @@ extern "C" fn event_tap_callback(
         return event;
     }
 
-    let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| unsafe {
+    let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(||
+    // SAFETY: user_info was verified non-null above. It points to a valid
+    // TapContext created by Box::into_raw in start_hotkey_monitor.
+    // CGEventGetFlags is safe to call with a valid event pointer from macOS.
+    unsafe {
         let ctx = &*(user_info as *const TapContext);
         let flags = CGEventGetFlags(event);
         let key_down = (flags & ctx.key_mask) != 0 || (flags & ctx.key_mask_alt) != 0;
@@ -243,18 +247,17 @@ pub fn start_hotkey_monitor(
                 }
                 CFRunLoopAddSource(run_loop, run_loop_source, kCFRunLoopCommonModes);
 
-                // CGEventTapEnable defaults to enabled on creation
-                // CGEventTapEnable(tap, true);
-
-                let _ = std::fs::write("/tmp/voice_input_debug.log",
-                    format!("CGEvent tap STARTED + ENABLED, key_mask: 0x{:x}\n", key_mask));
-
                 CFRunLoopRun();
+
+                // Thread is exiting — clear the cached RunLoop ref so Drop won't
+                // call CFRunLoopStop on a stale pointer.
+                if let Ok(mut rl) = run_loop_ref_clone.lock() {
+                    *rl = 0;
+                }
 
                 CFRelease(run_loop_source);
                 CFRelease(tap);
                 let _ = Box::from_raw(ctx_ptr as *mut TapContext);
-                log::info!("Hotkey monitor thread exiting");
             }
         })
         .map_err(|e| MacosError::Platform(format!("Failed to spawn hotkey thread: {e}")))?;
@@ -269,13 +272,19 @@ pub fn start_hotkey_monitor(
 impl Drop for HotkeyHandle {
     fn drop(&mut self) {
         self._running.store(false, Ordering::Relaxed);
-        // Stop the CFRunLoop so the thread can exit
+        // Stop the CFRunLoop so the thread can exit.
+        // The thread clears the ref to 0 on exit, so if it already exited
+        // we skip the call (avoids stale-pointer FFI).
         if let Ok(rl) = self._run_loop.lock() {
             if *rl != 0 {
                 // SAFETY: CFRunLoopStop is thread-safe and idempotent.
-                // The usize was stored from CFRunLoopGetCurrent in the tap thread.
+                // The ref is valid because the thread hasn't cleared it yet.
                 unsafe { CFRunLoopStop(*rl as *mut c_void); }
             }
+        }
+        // Join the thread to ensure clean shutdown and resource release.
+        if let Some(thread) = self._thread.take() {
+            let _ = thread.join();
         }
         // CFRunLoopRun will exit when there are no more sources, or we need to
         // explicitly stop it. Since we can't easily get the run loop ref from here,

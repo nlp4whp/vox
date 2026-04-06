@@ -4,7 +4,10 @@
 > **Auditor:** Claude Opus 4.6
 > **Reviewed by:** Codex (2026-04-06), findings corrected per review
 > **Methodology:** Per UNSAFE-REVIEW.md (Ralf Jung / BurntSushi / dtolnay / Mara Bos)
-> **Branch:** feat/meeting-minutes (commit 0007150)
+> **Branch:** feat/meeting-minutes
+> **Initial audit commit:** 0007150
+> **All findings fixed as of:** ddab08d+
+> **Status:** All CRITICAL/HIGH/MEDIUM items resolved. See commit history for fixes.
 
 ## Executive Summary
 
