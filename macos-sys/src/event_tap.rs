@@ -119,6 +119,12 @@ extern "C" fn event_tap_callback(
     // in start_hotkey_monitor (line ~200). CGEventTapCreate passes it through
     // unmodified. We wrap all Rust code in catch_unwind to prevent panic from
     // crossing the extern "C" FFI boundary into CoreGraphics.
+    // Defensive: user_info is created by our code (Box::into_raw), but guard against
+    // unexpected null from the OS callback contract.
+    if user_info.is_null() {
+        return event;
+    }
+
     let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| unsafe {
         let ctx = &*(user_info as *const TapContext);
         let flags = CGEventGetFlags(event);
