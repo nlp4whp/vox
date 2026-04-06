@@ -115,32 +115,28 @@ extern "C" fn event_tap_callback(
     event: *mut c_void,
     user_info: *mut c_void,
 ) -> *mut c_void {
-    unsafe {
+    // SAFETY: user_info is a valid TapContext pointer created by Box::into_raw
+    // in start_hotkey_monitor (line ~200). CGEventTapCreate passes it through
+    // unmodified. We wrap all Rust code in catch_unwind to prevent panic from
+    // crossing the extern "C" FFI boundary into CoreGraphics.
+    let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| unsafe {
         let ctx = &*(user_info as *const TapContext);
         let flags = CGEventGetFlags(event);
         let key_down = (flags & ctx.key_mask) != 0 || (flags & ctx.key_mask_alt) != 0;
         let was_pressed = ctx.was_pressed.load(Ordering::Relaxed);
 
-        // Debug: log EVERY callback invocation
-        use std::io::Write;
-        if let Ok(mut f) = std::fs::OpenOptions::new().create(true).append(true).open("/tmp/voice_input_debug.log") {
-            let _ = writeln!(f, "CALLBACK! event_type={} flags=0x{:x} key_down={} was_pressed={}", _event_type, flags, key_down, was_pressed);
-        }
-
         if key_down && !was_pressed {
             ctx.was_pressed.store(true, Ordering::Relaxed);
-            if let Ok(mut time) = ctx.press_time.lock() {
+            if let Ok(mut time) = ctx.press_time.try_lock() {
                 *time = Some(std::time::Instant::now());
             }
             (ctx.callback)(HotkeyEvent::Pressed);
-            // Suppress the event (return null)
             return std::ptr::null_mut();
         } else if !key_down && was_pressed {
-            // Key just released
             ctx.was_pressed.store(false, Ordering::Relaxed);
             let held_long_enough = ctx
                 .press_time
-                .lock()
+                .try_lock()
                 .ok()
                 .and_then(|t| *t)
                 .map(|t| t.elapsed().as_millis() >= MIN_HOLD_MS)
@@ -149,13 +145,14 @@ extern "C" fn event_tap_callback(
             if held_long_enough {
                 (ctx.callback)(HotkeyEvent::Released);
             }
-            // Suppress the event
             return std::ptr::null_mut();
         }
 
-        // Pass through other flag changes
         event
-    }
+    }));
+
+    // If Rust panicked, pass the event through unchanged (conservative fallback)
+    result.unwrap_or(event)
 }
 
 /// Start global hotkey monitoring via CGEvent tap.

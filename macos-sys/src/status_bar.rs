@@ -94,11 +94,14 @@ fn global_menu_target() -> ObjcId {
     unsafe { TARGET }
 }
 
+/// Handle to the macOS status bar item.
+///
+/// NOT Send — NSStatusItem must only be accessed from the main thread (AppKit requirement).
+/// All methods (update_menu, set_status_bar_icon, Drop) send ObjC messages that are
+/// only safe on the main thread.
 pub struct StatusBarHandle {
     item: ObjcId,
 }
-
-unsafe impl Send for StatusBarHandle {}
 
 pub fn create_status_bar(
     _icon_png_data: &[u8],
