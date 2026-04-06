@@ -13,6 +13,8 @@ fn str_to_nsstring(s: &str) -> ObjcId {
             length: s.len()
             encoding: 4u64
         ];
+        // Autorelease to prevent leak (alloc+init gives +1 retain)
+        let _: ObjcId = msg_send![ns_string, autorelease];
         ns_string
     }
 }

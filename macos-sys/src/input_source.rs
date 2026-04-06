@@ -25,6 +25,7 @@ fn str_to_nsstring(s: &str) -> ObjcId {
             length: s.len()
             encoding: 4u64
         ];
+        let _: ObjcId = msg_send![ns_string, autorelease];
         ns_string
     }
 }

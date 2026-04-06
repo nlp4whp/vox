@@ -40,6 +40,7 @@ pub enum HotkeyEvent {
 
 pub struct HotkeyHandle {
     _running: Arc<AtomicBool>,
+    _run_loop: Arc<std::sync::Mutex<usize>>, // stores CFRunLoopRef as usize for Send
     _thread: Option<std::thread::JoinHandle<()>>,
 }
 
@@ -179,6 +180,10 @@ pub fn start_hotkey_monitor(
 
     let running = Arc::new(AtomicBool::new(true));
     let running_clone = running.clone();
+    // Store CFRunLoopRef as usize for Send safety
+    let run_loop_ref: Arc<std::sync::Mutex<usize>> =
+        Arc::new(std::sync::Mutex::new(0));
+    let run_loop_ref_clone = run_loop_ref.clone();
 
     let thread = std::thread::Builder::new()
         .name("hotkey-monitor".into())
@@ -225,6 +230,10 @@ pub fn start_hotkey_monitor(
                 }
 
                 let run_loop = CFRunLoopGetCurrent();
+                // Save ref so Drop can call CFRunLoopStop
+                if let Ok(mut rl) = run_loop_ref_clone.lock() {
+                    *rl = run_loop as usize;
+                }
                 CFRunLoopAddSource(run_loop, run_loop_source, kCFRunLoopCommonModes);
 
                 // CGEventTapEnable defaults to enabled on creation
@@ -245,6 +254,7 @@ pub fn start_hotkey_monitor(
 
     Ok(HotkeyHandle {
         _running: running,
+        _run_loop: run_loop_ref,
         _thread: Some(thread),
     })
 }
@@ -252,6 +262,12 @@ pub fn start_hotkey_monitor(
 impl Drop for HotkeyHandle {
     fn drop(&mut self) {
         self._running.store(false, Ordering::Relaxed);
+        // Stop the CFRunLoop so the thread can exit
+        if let Ok(rl) = self._run_loop.lock() {
+            if *rl != 0 {
+                unsafe { CFRunLoopStop(*rl as *mut c_void); }
+            }
+        }
         // CFRunLoopRun will exit when there are no more sources, or we need to
         // explicitly stop it. Since we can't easily get the run loop ref from here,
         // the thread will exit on next CFRunLoopRun iteration check.
